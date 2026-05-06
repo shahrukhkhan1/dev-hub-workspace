@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 
@@ -30,6 +31,7 @@ interface Item {
   outputName?: string;
 }
 
+const MAX_FILE_BYTES = 50 * 1024 * 1024; // 50MB hard cap per file
 const fmt = (b: number) => b < 1024 ? `${b} B` : b < 1024 * 1024 ? `${(b/1024).toFixed(1)} KB` : `${(b/1024/1024).toFixed(2)} MB`;
 
 function ImageStudio() {
@@ -38,13 +40,23 @@ function ImageStudio() {
   const [maxWidth, setMaxWidth] = useState(1920);
   const [format, setFormat] = useState<"original" | "image/jpeg" | "image/png" | "image/webp">("image/webp");
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState({ current: 0, total: 0, name: "" });
 
   const onFiles = (files: FileList | null) => {
     if (!files) return;
-    const next: Item[] = Array.from(files).filter(f => f.type.startsWith("image/")).map(f => ({
-      id: crypto.randomUUID(), file: f, original: f.size, status: "pending",
-    }));
-    setItems(prev => [...prev, ...next]);
+    const incoming = Array.from(files).filter(f => f.type.startsWith("image/"));
+    const accepted: Item[] = [];
+    let rejected = 0;
+    for (const f of incoming) {
+      if (f.size > MAX_FILE_BYTES) {
+        rejected++;
+        toast.error(`${f.name} exceeds 50MB limit`, { description: `File is ${fmt(f.size)}` });
+        continue;
+      }
+      accepted.push({ id: crypto.randomUUID(), file: f, original: f.size, status: "pending" });
+    }
+    if (accepted.length) setItems(prev => [...prev, ...accepted]);
+    if (rejected && accepted.length) toast.warning(`Skipped ${rejected} oversized file(s)`);
   };
 
   const onDrop = useCallback((e: React.DragEvent) => {
@@ -53,9 +65,18 @@ function ImageStudio() {
   }, []);
 
   const process = async () => {
+    const queue = items.filter(i => i.status !== "done");
+    if (!queue.length) return;
     setBusy(true);
-    const updated = await Promise.all(items.map(async (it) => {
-      if (it.status === "done") return it;
+    setProgress({ current: 0, total: queue.length, name: "" });
+
+    // Sequential queue — process one image at a time to keep main thread responsive.
+    // browser-image-compression uses a Web Worker internally (useWebWorker: true)
+    // so the heavy lifting stays off the UI thread.
+    for (let i = 0; i < queue.length; i++) {
+      const it = queue[i];
+      setProgress({ current: i + 1, total: queue.length, name: it.file.name });
+      setItems(prev => prev.map(p => p.id === it.id ? { ...p, status: "processing" } : p));
       try {
         const fileType = format === "original" ? undefined : format;
         const compressed = await imageCompression(it.file, {
@@ -67,14 +88,22 @@ function ImageStudio() {
         });
         const ext = (fileType ?? it.file.type).split("/")[1] || "jpg";
         const baseName = it.file.name.replace(/\.[^.]+$/, "");
-        return { ...it, status: "done" as const, compressedSize: compressed.size, url: URL.createObjectURL(compressed), outputName: `${baseName}.${ext}` };
+        const url = URL.createObjectURL(compressed);
+        const outputName = `${baseName}.${ext}`;
+        setItems(prev => prev.map(p => p.id === it.id
+          ? { ...p, status: "done", compressedSize: compressed.size, url, outputName }
+          : p));
       } catch (e) {
         console.error(e);
-        return { ...it, status: "error" as const };
+        setItems(prev => prev.map(p => p.id === it.id ? { ...p, status: "error" } : p));
+        toast.error(`Failed: ${it.file.name}`);
       }
-    }));
-    setItems(updated);
+      // Yield to the event loop between iterations so UI can paint
+      await new Promise(r => setTimeout(r, 0));
+    }
+
     setBusy(false);
+    setProgress({ current: 0, total: 0, name: "" });
     toast.success("Processing complete");
   };
 
@@ -124,6 +153,15 @@ function ImageStudio() {
             {busy ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
             Process {items.length || ""}
           </Button>
+          {busy && progress.total > 0 && (
+            <div className="space-y-2">
+              <Progress value={(progress.current / progress.total) * 100} />
+              <div className="text-xs text-muted-foreground text-center">
+                Processing image {progress.current} of {progress.total}
+                <div className="truncate text-[11px] mt-0.5">{progress.name}</div>
+              </div>
+            </div>
+          )}
           {items.some(i => i.url) && (
             <Button onClick={downloadAll} variant="outline" className="w-full">
               <Download className="h-4 w-4 mr-2" /> Download all
@@ -147,7 +185,7 @@ function ImageStudio() {
           >
             <Upload className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
             <p className="font-medium">Drop images here or click to upload</p>
-            <p className="text-xs text-muted-foreground mt-1">Supports PNG, JPEG, WebP, AVIF · Bulk processing</p>
+            <p className="text-xs text-muted-foreground mt-1">PNG, JPEG, WebP, AVIF · Max 50MB per file · Sequential processing</p>
             <input id="imgin" type="file" accept="image/*" multiple hidden onChange={(e) => onFiles(e.target.files)} />
           </Card>
 
