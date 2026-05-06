@@ -1,0 +1,12 @@
+{
+  "name": "DevSuite Hub",
+  "short_name": "DevSuite",
+  "description": "Client-side image & PDF compression, multi-language code playground, and accessibility auditing.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b1220",
+  "theme_color": "#0b1220",
+  "icons": [
+    { "src": "/favicon.ico", "sizes": "any", "type": "image/x-icon" }
+  ]
+}

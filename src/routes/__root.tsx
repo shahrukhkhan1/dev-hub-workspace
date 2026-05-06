@@ -1,8 +1,10 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts, useRouterState } from "@tanstack/react-router";
+import { useEffect } from "react";
 import appCss from "../styles.css?url";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Toaster } from "@/components/ui/sonner";
+import { registerServiceWorker } from "@/lib/registerSW";
 
 function NotFoundComponent() {
   return (
@@ -25,7 +27,10 @@ export const Route = createRootRoute({
       { title: "DevSuite Hub — Developer & Creator Toolkit" },
       { name: "description", content: "Client-side image & PDF compression, multi-language code playground, and accessibility auditing in one fast workspace." },
     ],
-    links: [{ rel: "stylesheet", href: appCss }],
+    links: [
+      { rel: "stylesheet", href: appCss },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+    ],
   }),
   shellComponent: RootShell,
   component: RootComponent,
@@ -53,6 +58,7 @@ const titles: Record<string, string> = {
 
 function RootComponent() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  useEffect(() => { registerServiceWorker(); }, []);
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
