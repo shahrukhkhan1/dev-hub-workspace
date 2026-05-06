@@ -34,19 +34,50 @@ function PdfCompressor() {
     const out: Result[] = [];
     for (const f of Array.from(files)) {
       try {
+        if (f.type && f.type !== "application/pdf") {
+          toast.error(`${f.name} is not a PDF`);
+          continue;
+        }
         const buf = await f.arrayBuffer();
-        const pdf = await PDFDocument.load(buf, { updateMetadata: false });
+        let pdf;
+        try {
+          pdf = await PDFDocument.load(buf, { updateMetadata: false });
+        } catch (loadErr) {
+          const msg = String((loadErr as Error)?.message || loadErr).toLowerCase();
+          if (msg.includes("encrypt") || msg.includes("password")) {
+            toast.error(`${f.name} is password-protected`, {
+              description: "Remove the password in your PDF reader, then try again.",
+            });
+          } else {
+            toast.error(`${f.name} could not be read`, {
+              description: "The file appears to be corrupted or not a valid PDF.",
+            });
+          }
+          continue;
+        }
         if (stripMeta) {
           pdf.setTitle(""); pdf.setAuthor(""); pdf.setSubject("");
           pdf.setKeywords([]); pdf.setProducer(""); pdf.setCreator("");
         }
         const bytes = await pdf.save({ useObjectStreams: webOptimize, addDefaultPage: false });
         const blob = new Blob([bytes as BlobPart], { type: "application/pdf" });
+        // pdf-lib can't downsample embedded images further; if the rewrite
+        // produced no meaningful saving, tell the user clearly instead of
+        // shipping a "0% smaller" result that looks like a bug.
+        if (blob.size >= f.size * 0.99) {
+          toast.info(`${f.name} is already highly optimized`, {
+            description: "No further size reduction was possible client-side.",
+          });
+          continue;
+        }
         out.push({
           name: f.name.replace(/\.pdf$/i, "") + ".min.pdf",
           original: f.size, compressed: blob.size, url: URL.createObjectURL(blob),
         });
-      } catch (e) { console.error(e); toast.error(`Failed: ${f.name}`); }
+      } catch (e) {
+        console.error(e);
+        toast.error(`Failed: ${f.name}`, { description: "Unexpected error during compression." });
+      }
     }
     setResults(prev => [...out, ...prev]);
     setBusy(false);
