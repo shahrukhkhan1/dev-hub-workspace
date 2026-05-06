@@ -58,6 +58,7 @@ const titles: Record<string, string> = {
 
 function RootComponent() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  useEffect(() => { registerServiceWorker(); }, []);
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
