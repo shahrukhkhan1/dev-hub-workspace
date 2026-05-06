@@ -9,8 +9,26 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as PdfRouteImport } from './routes/pdf'
+import { Route as CodeRouteImport } from './routes/code'
+import { Route as A11yRouteImport } from './routes/a11y'
 import { Route as IndexRouteImport } from './routes/index'
 
+const PdfRoute = PdfRouteImport.update({
+  id: '/pdf',
+  path: '/pdf',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CodeRoute = CodeRouteImport.update({
+  id: '/code',
+  path: '/code',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const A11yRoute = A11yRouteImport.update({
+  id: '/a11y',
+  path: '/a11y',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -19,28 +37,61 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/a11y': typeof A11yRoute
+  '/code': typeof CodeRoute
+  '/pdf': typeof PdfRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/a11y': typeof A11yRoute
+  '/code': typeof CodeRoute
+  '/pdf': typeof PdfRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/a11y': typeof A11yRoute
+  '/code': typeof CodeRoute
+  '/pdf': typeof PdfRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/a11y' | '/code' | '/pdf'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/a11y' | '/code' | '/pdf'
+  id: '__root__' | '/' | '/a11y' | '/code' | '/pdf'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  A11yRoute: typeof A11yRoute
+  CodeRoute: typeof CodeRoute
+  PdfRoute: typeof PdfRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/pdf': {
+      id: '/pdf'
+      path: '/pdf'
+      fullPath: '/pdf'
+      preLoaderRoute: typeof PdfRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/code': {
+      id: '/code'
+      path: '/code'
+      fullPath: '/code'
+      preLoaderRoute: typeof CodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/a11y': {
+      id: '/a11y'
+      path: '/a11y'
+      fullPath: '/a11y'
+      preLoaderRoute: typeof A11yRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -53,7 +104,19 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  A11yRoute: A11yRoute,
+  CodeRoute: CodeRoute,
+  PdfRoute: PdfRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
