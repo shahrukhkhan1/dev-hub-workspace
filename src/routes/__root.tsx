@@ -1,10 +1,13 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts, useRouterState } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import appCss from "../styles.css?url";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Toaster } from "@/components/ui/sonner";
 import { registerServiceWorker } from "@/lib/registerSW";
+import { HeaderControls } from "@/components/HeaderControls";
+import { CommandPalette } from "@/components/CommandPalette";
+import "@/lib/sfx";
 
 function NotFoundComponent() {
   return (
@@ -25,7 +28,7 @@ export const Route = createRootRoute({
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "DevSuite Hub — Developer & Creator Toolkit" },
-      { name: "description", content: "Client-side image & PDF compression, multi-language code playground, and accessibility auditing in one fast workspace." },
+      { name: "description", content: "Premium client-side image & PDF compression, multi-language code playground, accessibility auditing and quick utilities." },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -50,14 +53,20 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 const titles: Record<string, string> = {
-  "/": "Image Studio",
+  "/": "Dashboard",
+  "/image": "Image Studio",
   "/pdf": "PDF Compressor",
   "/code": "Code Playground",
   "/a11y": "Accessibility Auditor",
+  "/text": "Text & JSON Studio",
+  "/password": "Password & UUID",
+  "/qr": "QR Code Studio",
+  "/css": "CSS Design Helper",
 };
 
 function RootComponent() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const [paletteOpen, setPaletteOpen] = useState(false);
   useEffect(() => { registerServiceWorker(); }, []);
   return (
     <SidebarProvider>
@@ -68,8 +77,8 @@ function RootComponent() {
             <SidebarTrigger />
             <div className="h-5 w-px bg-border" />
             <h1 className="text-sm font-semibold tracking-tight">{titles[pathname] ?? "DevSuite Hub"}</h1>
-            <div className="ml-auto text-[11px] text-muted-foreground hidden md:block">
-              All processing runs locally in your browser
+            <div className="ml-auto flex items-center gap-2">
+              <HeaderControls onOpenPalette={() => setPaletteOpen(true)} />
             </div>
           </header>
           <main className="flex-1 min-w-0">
@@ -77,6 +86,7 @@ function RootComponent() {
           </main>
         </div>
         <Toaster position="bottom-right" theme="dark" />
+        <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
       </div>
     </SidebarProvider>
   );

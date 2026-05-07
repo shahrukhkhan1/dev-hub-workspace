@@ -1,15 +1,23 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Image, FileText, Code2, ShieldCheck, Sparkles } from "lucide-react";
+import { Image, FileText, Code2, ShieldCheck, Sparkles, LayoutGrid, Type, KeyRound, QrCode, Palette } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter,
 } from "@/components/ui/sidebar";
 
-const items = [
-  { title: "Image Studio", url: "/", icon: Image, desc: "Compress & convert" },
+const modules = [
+  { title: "Dashboard", url: "/", icon: LayoutGrid, desc: "All tools" },
+  { title: "Image Studio", url: "/image", icon: Image, desc: "Compress & convert" },
   { title: "PDF Compressor", url: "/pdf", icon: FileText, desc: "Optimize PDFs" },
   { title: "Code Playground", url: "/code", icon: Code2, desc: "Multi-lang sandbox" },
   { title: "A11y Auditor", url: "/a11y", icon: ShieldCheck, desc: "WCAG checks" },
+];
+
+const utilities = [
+  { title: "Text & JSON", url: "/text", icon: Type, desc: "Format & convert" },
+  { title: "Password & UUID", url: "/password", icon: KeyRound, desc: "Secure tokens" },
+  { title: "QR Studio", url: "/qr", icon: QrCode, desc: "Custom QR codes" },
+  { title: "CSS Helper", url: "/css", icon: Palette, desc: "Visual generators" },
 ];
 
 export function AppSidebar() {
@@ -17,7 +25,7 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border">
-        <Link to="/" className="flex items-center gap-2 px-2 py-3">
+        <Link to="/" className="flex items-center gap-2 px-2 py-3" data-sfx>
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/40 shadow-glow">
             <Sparkles className="h-4 w-4 text-primary-foreground" />
           </div>
@@ -32,10 +40,31 @@ export function AppSidebar() {
           <SidebarGroupLabel>Modules</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => (
+              {modules.map((item) => (
                 <SidebarMenuItem key={item.url}>
-                  <SidebarMenuButton asChild isActive={pathname === item.url} tooltip={item.title} className="h-11">
-                    <Link to={item.url} className="flex items-center gap-3">
+                  <SidebarMenuButton asChild isActive={pathname === item.url} tooltip={item.title} className="h-11 active:scale-95 transition-transform">
+                    <Link to={item.url} data-sfx className="flex items-center gap-3">
+                      <item.icon className="h-4 w-4 shrink-0" />
+                      <div className="flex flex-col items-start group-data-[collapsible=icon]:hidden">
+                        <span className="text-sm font-medium leading-tight">{item.title}</span>
+                        <span className="text-[11px] text-muted-foreground leading-tight">{item.desc}</span>
+                      </div>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Quick Utilities</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {utilities.map((item) => (
+                <SidebarMenuItem key={item.url}>
+                  <SidebarMenuButton asChild isActive={pathname === item.url} tooltip={item.title} className="h-11 active:scale-95 transition-transform">
+                    <Link to={item.url} data-sfx className="flex items-center gap-3">
                       <item.icon className="h-4 w-4 shrink-0" />
                       <div className="flex flex-col items-start group-data-[collapsible=icon]:hidden">
                         <span className="text-sm font-medium leading-tight">{item.title}</span>

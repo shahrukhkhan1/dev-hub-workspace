@@ -9,14 +9,44 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TextRouteImport } from './routes/text'
+import { Route as QrRouteImport } from './routes/qr'
 import { Route as PdfRouteImport } from './routes/pdf'
+import { Route as PasswordRouteImport } from './routes/password'
+import { Route as ImageRouteImport } from './routes/image'
+import { Route as CssRouteImport } from './routes/css'
 import { Route as CodeRouteImport } from './routes/code'
 import { Route as A11yRouteImport } from './routes/a11y'
 import { Route as IndexRouteImport } from './routes/index'
 
+const TextRoute = TextRouteImport.update({
+  id: '/text',
+  path: '/text',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const QrRoute = QrRouteImport.update({
+  id: '/qr',
+  path: '/qr',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PdfRoute = PdfRouteImport.update({
   id: '/pdf',
   path: '/pdf',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PasswordRoute = PasswordRouteImport.update({
+  id: '/password',
+  path: '/password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ImageRoute = ImageRouteImport.update({
+  id: '/image',
+  path: '/image',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CssRoute = CssRouteImport.update({
+  id: '/css',
+  path: '/css',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CodeRoute = CodeRouteImport.update({
@@ -39,43 +69,126 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/a11y': typeof A11yRoute
   '/code': typeof CodeRoute
+  '/css': typeof CssRoute
+  '/image': typeof ImageRoute
+  '/password': typeof PasswordRoute
   '/pdf': typeof PdfRoute
+  '/qr': typeof QrRoute
+  '/text': typeof TextRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/a11y': typeof A11yRoute
   '/code': typeof CodeRoute
+  '/css': typeof CssRoute
+  '/image': typeof ImageRoute
+  '/password': typeof PasswordRoute
   '/pdf': typeof PdfRoute
+  '/qr': typeof QrRoute
+  '/text': typeof TextRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/a11y': typeof A11yRoute
   '/code': typeof CodeRoute
+  '/css': typeof CssRoute
+  '/image': typeof ImageRoute
+  '/password': typeof PasswordRoute
   '/pdf': typeof PdfRoute
+  '/qr': typeof QrRoute
+  '/text': typeof TextRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/a11y' | '/code' | '/pdf'
+  fullPaths:
+    | '/'
+    | '/a11y'
+    | '/code'
+    | '/css'
+    | '/image'
+    | '/password'
+    | '/pdf'
+    | '/qr'
+    | '/text'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/a11y' | '/code' | '/pdf'
-  id: '__root__' | '/' | '/a11y' | '/code' | '/pdf'
+  to:
+    | '/'
+    | '/a11y'
+    | '/code'
+    | '/css'
+    | '/image'
+    | '/password'
+    | '/pdf'
+    | '/qr'
+    | '/text'
+  id:
+    | '__root__'
+    | '/'
+    | '/a11y'
+    | '/code'
+    | '/css'
+    | '/image'
+    | '/password'
+    | '/pdf'
+    | '/qr'
+    | '/text'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   A11yRoute: typeof A11yRoute
   CodeRoute: typeof CodeRoute
+  CssRoute: typeof CssRoute
+  ImageRoute: typeof ImageRoute
+  PasswordRoute: typeof PasswordRoute
   PdfRoute: typeof PdfRoute
+  QrRoute: typeof QrRoute
+  TextRoute: typeof TextRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/text': {
+      id: '/text'
+      path: '/text'
+      fullPath: '/text'
+      preLoaderRoute: typeof TextRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/qr': {
+      id: '/qr'
+      path: '/qr'
+      fullPath: '/qr'
+      preLoaderRoute: typeof QrRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/pdf': {
       id: '/pdf'
       path: '/pdf'
       fullPath: '/pdf'
       preLoaderRoute: typeof PdfRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/password': {
+      id: '/password'
+      path: '/password'
+      fullPath: '/password'
+      preLoaderRoute: typeof PasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/image': {
+      id: '/image'
+      path: '/image'
+      fullPath: '/image'
+      preLoaderRoute: typeof ImageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/css': {
+      id: '/css'
+      path: '/css'
+      fullPath: '/css'
+      preLoaderRoute: typeof CssRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/code': {
@@ -106,7 +219,12 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   A11yRoute: A11yRoute,
   CodeRoute: CodeRoute,
+  CssRoute: CssRoute,
+  ImageRoute: ImageRoute,
+  PasswordRoute: PasswordRoute,
   PdfRoute: PdfRoute,
+  QrRoute: QrRoute,
+  TextRoute: TextRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
