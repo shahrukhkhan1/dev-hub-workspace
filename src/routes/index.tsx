@@ -1,222 +1,103 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useState } from "react";
-import imageCompression from "browser-image-compression";
-import { Upload, Download, Image as ImageIcon, Trash2, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { Image as ImageIcon, FileText, Code2, ShieldCheck, Type, KeyRound, QrCode, Palette, ArrowUpRight, Sparkles } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { Slider } from "@/components/ui/slider";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Image Studio — DevSuite Hub" },
-      { name: "description", content: "Bulk client-side image compression, resizing and format conversion to PNG, JPEG, WebP & AVIF." },
+      { title: "DevSuite Hub — All-in-one Developer & Creator Toolkit" },
+      { name: "description", content: "A premium client-side workspace: image & PDF compression, code playground, accessibility auditing, and daily quick utilities." },
     ],
   }),
-  component: ImageStudio,
+  component: Dashboard,
 });
 
-interface Item {
-  id: string;
-  file: File;
-  original: number;
-  compressedSize?: number;
-  url?: string;
-  status: "pending" | "processing" | "done" | "error";
-  outputName?: string;
-}
+type Tool = { name: string; desc: string; to: string; icon: any; tags: string[]; gradient: string };
 
-const MAX_FILE_BYTES = 50 * 1024 * 1024; // 50MB hard cap per file
-const fmt = (b: number) => b < 1024 ? `${b} B` : b < 1024 * 1024 ? `${(b/1024).toFixed(1)} KB` : `${(b/1024/1024).toFixed(2)} MB`;
+const categories: { label: string; tools: Tool[] }[] = [
+  {
+    label: "Media Optimization",
+    tools: [
+      { name: "Image Studio", desc: "Bulk compress, resize and convert images to WebP, JPEG, PNG.", to: "/image", icon: ImageIcon, tags: ["Offline Ready", "Web Fast"], gradient: "from-cyan-400 to-blue-500" },
+      { name: "PDF Compressor", desc: "Shrink PDFs and strip metadata — entirely in your browser.", to: "/pdf", icon: FileText, tags: ["Offline Ready", "Secure"], gradient: "from-rose-400 to-orange-500" },
+    ],
+  },
+  {
+    label: "Developer Environments",
+    tools: [
+      { name: "Code Playground", desc: "Run HTML/JS, React and Python with live preview & sharing.", to: "/code", icon: Code2, tags: ["Web Fast", "Sandboxed"], gradient: "from-violet-400 to-fuchsia-500" },
+    ],
+  },
+  {
+    label: "Quality Assurance",
+    tools: [
+      { name: "Accessibility Auditor", desc: "Audit any HTML against WCAG with axe-core and fix snippets.", to: "/a11y", icon: ShieldCheck, tags: ["Offline Ready", "WCAG"], gradient: "from-emerald-400 to-teal-500" },
+    ],
+  },
+  {
+    label: "Daily Quick Tools",
+    tools: [
+      { name: "Text & JSON Studio", desc: "Beautify / minify JSON, tree view, case converters & counters.", to: "/text", icon: Type, tags: ["Instant", "Offline"], gradient: "from-amber-400 to-yellow-500" },
+      { name: "Password & UUID", desc: "Generate secure passwords, UUIDv4 and crypto hashes.", to: "/password", icon: KeyRound, tags: ["Secure", "Crypto"], gradient: "from-pink-400 to-rose-500" },
+      { name: "QR Code Studio", desc: "Custom-colored QR codes — export PNG or SVG.", to: "/qr", icon: QrCode, tags: ["Web Fast"], gradient: "from-sky-400 to-indigo-500" },
+      { name: "CSS Design Helper", desc: "Visual gradient, shadow & glassmorphism code generator.", to: "/css", icon: Palette, tags: ["Designer"], gradient: "from-lime-400 to-green-500" },
+    ],
+  },
+];
 
-function ImageStudio() {
-  const [items, setItems] = useState<Item[]>([]);
-  const [quality, setQuality] = useState(0.8);
-  const [maxWidth, setMaxWidth] = useState(1920);
-  const [format, setFormat] = useState<"original" | "image/jpeg" | "image/png" | "image/webp">("image/webp");
-  const [busy, setBusy] = useState(false);
-  const [progress, setProgress] = useState({ current: 0, total: 0, name: "" });
-
-  const onFiles = (files: FileList | null) => {
-    if (!files) return;
-    const incoming = Array.from(files).filter(f => f.type.startsWith("image/"));
-    const accepted: Item[] = [];
-    let rejected = 0;
-    for (const f of incoming) {
-      if (f.size > MAX_FILE_BYTES) {
-        rejected++;
-        toast.error(`${f.name} exceeds 50MB limit`, { description: `File is ${fmt(f.size)}` });
-        continue;
-      }
-      accepted.push({ id: crypto.randomUUID(), file: f, original: f.size, status: "pending" });
-    }
-    if (accepted.length) setItems(prev => [...prev, ...accepted]);
-    if (rejected && accepted.length) toast.warning(`Skipped ${rejected} oversized file(s)`);
-  };
-
-  const onDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    onFiles(e.dataTransfer.files);
-  }, []);
-
-  const process = async () => {
-    const queue = items.filter(i => i.status !== "done");
-    if (!queue.length) return;
-    setBusy(true);
-    setProgress({ current: 0, total: queue.length, name: "" });
-
-    // Sequential queue — process one image at a time to keep main thread responsive.
-    // browser-image-compression uses a Web Worker internally (useWebWorker: true)
-    // so the heavy lifting stays off the UI thread.
-    for (let i = 0; i < queue.length; i++) {
-      const it = queue[i];
-      setProgress({ current: i + 1, total: queue.length, name: it.file.name });
-      setItems(prev => prev.map(p => p.id === it.id ? { ...p, status: "processing" } : p));
-      try {
-        const fileType = format === "original" ? undefined : format;
-        const compressed = await imageCompression(it.file, {
-          maxSizeMB: 50,
-          maxWidthOrHeight: maxWidth,
-          useWebWorker: true,
-          initialQuality: quality,
-          fileType,
-        });
-        const ext = (fileType ?? it.file.type).split("/")[1] || "jpg";
-        const baseName = it.file.name.replace(/\.[^.]+$/, "");
-        const url = URL.createObjectURL(compressed);
-        const outputName = `${baseName}.${ext}`;
-        setItems(prev => prev.map(p => p.id === it.id
-          ? { ...p, status: "done", compressedSize: compressed.size, url, outputName }
-          : p));
-      } catch (e) {
-        console.error(e);
-        setItems(prev => prev.map(p => p.id === it.id ? { ...p, status: "error" } : p));
-        toast.error(`Failed: ${it.file.name}`);
-      }
-      // Yield to the event loop between iterations so UI can paint
-      await new Promise(r => setTimeout(r, 0));
-    }
-
-    setBusy(false);
-    setProgress({ current: 0, total: 0, name: "" });
-    toast.success("Processing complete");
-  };
-
-  const downloadAll = () => {
-    items.filter(i => i.url).forEach((i, idx) => {
-      setTimeout(() => {
-        const a = document.createElement("a");
-        a.href = i.url!; a.download = i.outputName!; a.click();
-      }, idx * 150);
-    });
-  };
-
-  const totalOriginal = items.reduce((s, i) => s + i.original, 0);
-  const totalCompressed = items.reduce((s, i) => s + (i.compressedSize ?? 0), 0);
-  const savings = totalOriginal > 0 && totalCompressed > 0 ? Math.round((1 - totalCompressed / totalOriginal) * 100) : 0;
-
+function Dashboard() {
   return (
-    <div className="container mx-auto max-w-7xl p-4 md:p-6 space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">Image Studio</h2>
-        <p className="text-sm text-muted-foreground">Compress, resize and convert images — entirely in your browser.</p>
-      </div>
-
-      <div className="grid lg:grid-cols-[320px_1fr] gap-6">
-        <Card className="glass-panel p-5 space-y-5 h-fit">
-          <div className="space-y-2">
-            <Label>Quality <span className="text-muted-foreground">({Math.round(quality * 100)}%)</span></Label>
-            <Slider min={0.1} max={1} step={0.05} value={[quality]} onValueChange={([v]) => setQuality(v)} />
-          </div>
-          <div className="space-y-2">
-            <Label>Max width / height (px)</Label>
-            <Input type="number" value={maxWidth} onChange={(e) => setMaxWidth(Number(e.target.value))} />
-          </div>
-          <div className="space-y-2">
-            <Label>Output format</Label>
-            <Select value={format} onValueChange={(v) => setFormat(v as typeof format)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="original">Original</SelectItem>
-                <SelectItem value="image/webp">WebP</SelectItem>
-                <SelectItem value="image/jpeg">JPEG</SelectItem>
-                <SelectItem value="image/png">PNG</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <Button onClick={process} disabled={!items.length || busy} className="w-full">
-            {busy ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-            Process {items.length || ""}
-          </Button>
-          {busy && progress.total > 0 && (
-            <div className="space-y-2">
-              <Progress value={(progress.current / progress.total) * 100} />
-              <div className="text-xs text-muted-foreground text-center">
-                Processing image {progress.current} of {progress.total}
-                <div className="truncate text-[11px] mt-0.5">{progress.name}</div>
-              </div>
-            </div>
-          )}
-          {items.some(i => i.url) && (
-            <Button onClick={downloadAll} variant="outline" className="w-full">
-              <Download className="h-4 w-4 mr-2" /> Download all
-            </Button>
-          )}
-          {savings > 0 && (
-            <div className="rounded-lg bg-success/10 border border-success/30 p-3 text-center">
-              <div className="text-2xl font-bold text-success">{savings}%</div>
-              <div className="text-xs text-muted-foreground">size reduction</div>
-              <div className="text-[11px] text-muted-foreground mt-1">{fmt(totalOriginal)} → {fmt(totalCompressed)}</div>
-            </div>
-          )}
-        </Card>
-
-        <div className="space-y-4">
-          <Card
-            className="glass-panel border-dashed border-2 border-border/60 hover:border-primary/50 transition-colors p-10 text-center cursor-pointer"
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={onDrop}
-            onClick={() => document.getElementById("imgin")?.click()}
-          >
-            <Upload className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-            <p className="font-medium">Drop images here or click to upload</p>
-            <p className="text-xs text-muted-foreground mt-1">PNG, JPEG, WebP, AVIF · Max 50MB per file · Sequential processing</p>
-            <input id="imgin" type="file" accept="image/*" multiple hidden onChange={(e) => onFiles(e.target.files)} />
-          </Card>
-
-          {items.length > 0 && (
-            <Card className="glass-panel divide-y divide-border/50 overflow-hidden">
-              {items.map((it) => (
-                <div key={it.id} className="flex items-center gap-3 p-3">
-                  <div className="h-12 w-12 rounded-md bg-muted flex items-center justify-center overflow-hidden shrink-0">
-                    {it.url ? <img src={it.url} alt="" className="h-full w-full object-cover" /> : <ImageIcon className="h-5 w-5 text-muted-foreground" />}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium truncate">{it.outputName ?? it.file.name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {fmt(it.original)}
-                      {it.compressedSize ? <> → <span className="text-success">{fmt(it.compressedSize)}</span></> : null}
-                    </div>
-                  </div>
-                  {it.url && (
-                    <Button size="icon" variant="ghost" asChild>
-                      <a href={it.url} download={it.outputName}><Download className="h-4 w-4" /></a>
-                    </Button>
-                  )}
-                  <Button size="icon" variant="ghost" onClick={() => setItems(prev => prev.filter(p => p.id !== it.id))}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-            </Card>
-          )}
+    <div className="container mx-auto max-w-7xl p-4 md:p-8 space-y-10 animate-in fade-in duration-500">
+      <header className="space-y-3">
+        <div className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-glass px-3 py-1 text-[11px] text-muted-foreground">
+          <Sparkles className="h-3 w-3 text-primary" /> Premium client-side workspace
         </div>
-      </div>
+        <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
+          Your daily <span className="text-gradient">creator & developer</span> toolkit
+        </h1>
+        <p className="text-sm text-muted-foreground max-w-2xl">
+          Every tool runs locally in your browser. No uploads, no accounts, no waiting. Press{" "}
+          <kbd className="rounded bg-muted px-1.5 py-0.5 text-[10px]">⌘ K</kbd> to jump anywhere.
+        </p>
+      </header>
+
+      {categories.map((cat) => (
+        <section key={cat.label} className="space-y-4">
+          <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{cat.label}</h2>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {cat.tools.map((t) => (
+              <Link
+                key={t.to}
+                to={t.to}
+                data-sfx
+                className="group relative block focus-visible:outline-none"
+              >
+                <Card className="glass-panel relative overflow-hidden p-5 h-full transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-glow group-active:scale-[0.98] border-border/60 group-hover:border-primary/40">
+                  {/* glow halo */}
+                  <div className="pointer-events-none absolute -inset-px rounded-[inherit] opacity-0 group-hover:opacity-100 transition-opacity"
+                    style={{ background: "radial-gradient(400px circle at var(--x,50%) var(--y,50%), oklch(0.72 0.18 200 / 0.15), transparent 40%)" }} />
+                  <div className="flex items-start justify-between gap-3 mb-4">
+                    <div className={`flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br ${t.gradient} shadow-card`}>
+                      <t.icon className="h-5 w-5 text-white" />
+                    </div>
+                    <ArrowUpRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary" />
+                  </div>
+                  <h3 className="text-base font-semibold tracking-tight">{t.name}</h3>
+                  <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{t.desc}</p>
+                  <div className="mt-4 flex flex-wrap gap-1.5">
+                    {t.tags.map((tag) => (
+                      <Badge key={tag} variant="secondary" className="text-[10px] font-medium px-2 py-0">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ))}
     </div>
   );
 }
