@@ -18,7 +18,7 @@ This project is a TanStack Start app targeting **Cloudflare Workers** (see
    - **Node version:** `20` or newer
 5. Click **Save and Deploy**. Every push to your default branch will redeploy.
 
-Your Worker URL will be `https://devsuite-hub.<your-subdomain>.workers.dev`.
+Your Worker is live at: <https://dev-hub-workspace.shahrukh-khan1766.workers.dev/>.
 You can attach a custom domain from the Worker's **Settings → Domains & Routes**.
 
 ## Deploy manually from your machine (optional)
