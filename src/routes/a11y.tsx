@@ -58,25 +58,35 @@ function A11y() {
 
   const audit = async () => {
     setRunning(true);
-    const sandbox = document.createElement("iframe");
-    sandbox.style.position = "fixed";
-    sandbox.style.left = "-99999px";
-    sandbox.style.width = "1024px";
-    sandbox.style.height = "768px";
-    document.body.appendChild(sandbox);
+    // Render user HTML in an isolated wrapper inside the parent document so
+    // axe-core can analyze it within its own execution context.
+    const wrapper = document.createElement("div");
+    wrapper.setAttribute("aria-hidden", "true");
+    wrapper.style.cssText = "position:fixed;left:-99999px;top:0;width:1024px;height:auto;pointer-events:none;";
+    // Extract <body> contents if a full document was pasted, otherwise use as-is.
+    let inner = html;
     try {
-      const doc = sandbox.contentDocument!;
-      doc.open(); doc.write(html); doc.close();
-      await new Promise(r => setTimeout(r, 200));
-      const results = await axe.run(doc, { resultTypes: ["violations", "passes"] });
+      const parsed = new DOMParser().parseFromString(html, "text/html");
+      if (parsed.body && parsed.body.innerHTML.trim()) inner = parsed.body.innerHTML;
+    } catch {}
+    wrapper.innerHTML = inner;
+    document.body.appendChild(wrapper);
+    try {
+      await new Promise((r) => setTimeout(r, 50));
+      const results = await axe.run(wrapper, { resultTypes: ["violations", "passes"] });
       const sorted = [...results.violations].sort(
         (a, b) => (impactRank[(b.impact ?? "minor") as keyof typeof impactRank] ?? 0) -
                   (impactRank[(a.impact ?? "minor") as keyof typeof impactRank] ?? 0)
       ) as Violation[];
       setViolations(sorted);
       setPasses(results.passes.length);
-    } catch (e) { console.error(e); toast.error("Audit failed"); }
-    finally { document.body.removeChild(sandbox); setRunning(false); }
+    } catch (e) {
+      console.error(e);
+      toast.error("Audit failed — check the HTML and try again");
+    } finally {
+      wrapper.remove();
+      setRunning(false);
+    }
   };
 
   const copyFix = (id: string) => {
