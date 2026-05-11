@@ -21,7 +21,7 @@ export const Route = createFileRoute("/qr")({
 });
 
 function QRStudio() {
-  const [text, setText] = useState("https://devsuite.hub");
+  const [text, setText] = useState("https://dev-hub-workspace.shahrukh-khan1766.workers.dev/");
   const [fg, setFg] = useState("#0ea5e9");
   const [bg, setBg] = useState("#0b1220");
   const [size, setSize] = useState(320);
