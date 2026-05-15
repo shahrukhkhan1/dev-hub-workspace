@@ -3,7 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import {
   CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator,
 } from "@/components/ui/command";
-import { Image, FileText, Code2, ShieldCheck, Type, KeyRound, QrCode, Palette, Trash2, Volume2, LayoutGrid } from "lucide-react";
+import { Image, FileText, Code2, ShieldCheck, Type, KeyRound, QrCode, Palette, Trash2, Volume2, LayoutGrid, FileCode2 } from "lucide-react";
 import { db } from "@/lib/db";
 import { sfx } from "@/lib/sfx";
 import { toast } from "sonner";
@@ -34,6 +34,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
     { i: KeyRound, n: "Password & UUID Generator", p: "/password" },
     { i: QrCode, n: "QR Code Studio", p: "/qr" },
     { i: Palette, n: "CSS Design Helper", p: "/css" },
+    { i: FileCode2, n: "Word to HTML", p: "/word-to-html" },
   ];
 
   return (
