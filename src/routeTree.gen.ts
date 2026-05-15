@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WordToHtmlRouteImport } from './routes/word-to-html'
 import { Route as TextRouteImport } from './routes/text'
 import { Route as QrRouteImport } from './routes/qr'
 import { Route as PdfRouteImport } from './routes/pdf'
@@ -19,6 +20,11 @@ import { Route as CodeRouteImport } from './routes/code'
 import { Route as A11yRouteImport } from './routes/a11y'
 import { Route as IndexRouteImport } from './routes/index'
 
+const WordToHtmlRoute = WordToHtmlRouteImport.update({
+  id: '/word-to-html',
+  path: '/word-to-html',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TextRoute = TextRouteImport.update({
   id: '/text',
   path: '/text',
@@ -75,6 +81,7 @@ export interface FileRoutesByFullPath {
   '/pdf': typeof PdfRoute
   '/qr': typeof QrRoute
   '/text': typeof TextRoute
+  '/word-to-html': typeof WordToHtmlRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -86,6 +93,7 @@ export interface FileRoutesByTo {
   '/pdf': typeof PdfRoute
   '/qr': typeof QrRoute
   '/text': typeof TextRoute
+  '/word-to-html': typeof WordToHtmlRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -98,6 +106,7 @@ export interface FileRoutesById {
   '/pdf': typeof PdfRoute
   '/qr': typeof QrRoute
   '/text': typeof TextRoute
+  '/word-to-html': typeof WordToHtmlRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -111,6 +120,7 @@ export interface FileRouteTypes {
     | '/pdf'
     | '/qr'
     | '/text'
+    | '/word-to-html'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -122,6 +132,7 @@ export interface FileRouteTypes {
     | '/pdf'
     | '/qr'
     | '/text'
+    | '/word-to-html'
   id:
     | '__root__'
     | '/'
@@ -133,6 +144,7 @@ export interface FileRouteTypes {
     | '/pdf'
     | '/qr'
     | '/text'
+    | '/word-to-html'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -145,10 +157,18 @@ export interface RootRouteChildren {
   PdfRoute: typeof PdfRoute
   QrRoute: typeof QrRoute
   TextRoute: typeof TextRoute
+  WordToHtmlRoute: typeof WordToHtmlRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/word-to-html': {
+      id: '/word-to-html'
+      path: '/word-to-html'
+      fullPath: '/word-to-html'
+      preLoaderRoute: typeof WordToHtmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/text': {
       id: '/text'
       path: '/text'
@@ -225,16 +245,8 @@ const rootRouteChildren: RootRouteChildren = {
   PdfRoute: PdfRoute,
   QrRoute: QrRoute,
   TextRoute: TextRoute,
+  WordToHtmlRoute: WordToHtmlRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}

@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Image, FileText, Code2, ShieldCheck, Sparkles, LayoutGrid, Type, KeyRound, QrCode, Palette } from "lucide-react";
+import { Image, FileText, Code2, ShieldCheck, Sparkles, LayoutGrid, Type, KeyRound, QrCode, Palette, FileCode2 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter,
@@ -18,6 +18,7 @@ const utilities = [
   { title: "Password & UUID", url: "/password", icon: KeyRound, desc: "Secure tokens" },
   { title: "QR Studio", url: "/qr", icon: QrCode, desc: "Custom QR codes" },
   { title: "CSS Helper", url: "/css", icon: Palette, desc: "Visual generators" },
+  { title: "Word to HTML", url: "/word-to-html", icon: FileCode2, desc: "Clean blog HTML" },
 ];
 
 export function AppSidebar() {

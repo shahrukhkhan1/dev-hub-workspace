@@ -62,6 +62,7 @@ const titles: Record<string, string> = {
   "/password": "Password & UUID",
   "/qr": "QR Code Studio",
   "/css": "CSS Design Helper",
+  "/word-to-html": "Word to HTML",
 };
 
 function RootComponent() {
