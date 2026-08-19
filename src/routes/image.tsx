@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useState } from "react";
-import imageCompression from "browser-image-compression";
 import { Upload, Download, Image as ImageIcon, Trash2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -8,6 +7,7 @@ import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { sfx } from "@/lib/sfx";
@@ -17,6 +17,10 @@ export const Route = createFileRoute("/image")({
     meta: [
       { title: "Image Studio — DevSuite Hub" },
       { name: "description", content: "Bulk client-side image compression, resizing and format conversion to PNG, JPEG, WebP." },
+      { property: "og:title", content: "Image Studio — DevSuite Hub" },
+      { property: "og:description", content: "Compress, resize and convert images entirely in your browser." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: ImageStudio,
@@ -30,16 +34,65 @@ interface Item {
   url?: string;
   status: "pending" | "processing" | "done" | "error";
   outputName?: string;
+  dims?: string;
 }
 
 const MAX_FILE_BYTES = 50 * 1024 * 1024;
 const fmt = (b: number) => b < 1024 ? `${b} B` : b < 1024 * 1024 ? `${(b/1024).toFixed(1)} KB` : `${(b/1024/1024).toFixed(2)} MB`;
 
+type OutFormat = "original" | "image/jpeg" | "image/png" | "image/webp";
+
+async function toBlob(canvas: HTMLCanvasElement, type: string, quality: number): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Encoding failed"))), type, quality);
+  });
+}
+
+async function renderResized(file: File, maxDim: number, enforce: boolean) {
+  const bitmap = await createImageBitmap(file);
+  const srcW = bitmap.width;
+  const srcH = bitmap.height;
+  const longest = Math.max(srcW, srcH);
+  const scale = enforce && maxDim > 0 && longest > maxDim ? maxDim / longest : 1;
+  const w = Math.max(1, Math.round(srcW * scale));
+  const h = Math.max(1, Math.round(srcH * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas unavailable");
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(bitmap, 0, 0, w, h);
+  bitmap.close?.();
+  return { canvas, w, h, srcW, srcH };
+}
+
+async function processImage(file: File, opts: { maxDim: number; resize: boolean; quality: number; format: OutFormat }) {
+  const { canvas, w, h, srcW, srcH } = await renderResized(file, opts.maxDim, opts.resize);
+  let type: string;
+  if (opts.format === "original") {
+    type = file.type === "image/png" ? "image/png" : file.type === "image/webp" ? "image/webp" : "image/jpeg";
+  } else {
+    type = opts.format;
+  }
+  // PNG is lossless: to still gain size on transparent-free art we fall back
+  // to the canvas encoder's default. JPEG/WebP honour the quality argument.
+  let blob = await toBlob(canvas, type, opts.quality);
+  if (type === "image/png" && blob.size > file.size && opts.format === "original") {
+    // Re-encoding PNG grew the file — keep the original bytes instead.
+    blob = file;
+  }
+  const ext = type.split("/")[1] === "jpeg" ? "jpg" : type.split("/")[1];
+  return { blob, ext, dims: `${srcW}×${srcH} → ${w}×${h}` };
+}
+
 function ImageStudio() {
   const [items, setItems] = useState<Item[]>([]);
   const [quality, setQuality] = useState(0.8);
   const [maxWidth, setMaxWidth] = useState(1920);
-  const [format, setFormat] = useState<"original" | "image/jpeg" | "image/png" | "image/webp">("image/webp");
+  const [resize, setResize] = useState(true);
+  const [format, setFormat] = useState<OutFormat>("image/webp");
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0, name: "" });
 
@@ -76,20 +129,12 @@ function ImageStudio() {
       setProgress({ current: i + 1, total: queue.length, name: it.file.name });
       setItems(prev => prev.map(p => p.id === it.id ? { ...p, status: "processing" } : p));
       try {
-        const fileType = format === "original" ? undefined : format;
-        const compressed = await imageCompression(it.file, {
-          maxSizeMB: 50,
-          maxWidthOrHeight: maxWidth,
-          useWebWorker: true,
-          initialQuality: quality,
-          fileType,
-        });
-        const ext = (fileType ?? it.file.type).split("/")[1] || "jpg";
+        const { blob, ext, dims } = await processImage(it.file, { maxDim: maxWidth, resize, quality, format });
         const baseName = it.file.name.replace(/\.[^.]+$/, "");
-        const url = URL.createObjectURL(compressed);
+        const url = URL.createObjectURL(blob);
         const outputName = `${baseName}.${ext}`;
         setItems(prev => prev.map(p => p.id === it.id
-          ? { ...p, status: "done", compressedSize: compressed.size, url, outputName }
+          ? { ...p, status: "done", compressedSize: blob.size, url, outputName, dims }
           : p));
       } catch (e) {
         console.error(e);
@@ -130,14 +175,25 @@ function ImageStudio() {
           <div className="space-y-2">
             <Label>Quality <span className="text-muted-foreground">({Math.round(quality * 100)}%)</span></Label>
             <Slider min={0.1} max={1} step={0.05} value={[quality]} onValueChange={([v]) => setQuality(v)} />
+            <p className="text-[11px] text-muted-foreground">Applies to JPEG and WebP output. PNG is lossless.</p>
           </div>
           <div className="space-y-2">
-            <Label>Max width / height (px)</Label>
-            <Input type="number" value={maxWidth} onChange={(e) => setMaxWidth(Number(e.target.value))} />
+            <div className="flex items-center justify-between gap-3">
+              <Label htmlFor="resize-toggle">Resize images</Label>
+              <Switch id="resize-toggle" checked={resize} onCheckedChange={setResize} />
+            </div>
+            <Input
+              type="number"
+              min={16}
+              value={maxWidth}
+              disabled={!resize}
+              onChange={(e) => setMaxWidth(Math.max(16, Number(e.target.value) || 0))}
+            />
+            <p className="text-[11px] text-muted-foreground">Longest side is scaled down to this many pixels.</p>
           </div>
           <div className="space-y-2">
             <Label>Output format</Label>
-            <Select value={format} onValueChange={(v) => setFormat(v as typeof format)}>
+            <Select value={format} onValueChange={(v) => setFormat(v as OutFormat)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="original">Original</SelectItem>
@@ -199,6 +255,7 @@ function ImageStudio() {
                     <div className="text-xs text-muted-foreground">
                       {fmt(it.original)}
                       {it.compressedSize ? <> → <span className="text-success">{fmt(it.compressedSize)}</span></> : null}
+                      {it.dims ? <span className="ml-2 opacity-70">{it.dims}</span> : null}
                     </div>
                   </div>
                   {it.url && (
