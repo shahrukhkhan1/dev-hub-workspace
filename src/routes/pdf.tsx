@@ -43,7 +43,6 @@ async function getPdfjs() {
   if (!pdfjsPromise) {
     pdfjsPromise = (async () => {
       const lib = await import("pdfjs-dist");
-      // @ts-expect-error - vite ?url import
       const workerUrl = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default as string;
       lib.GlobalWorkerOptions.workerSrc = workerUrl;
       return lib;
@@ -82,7 +81,6 @@ async function rasterCompress(
     const ctx = canvas.getContext("2d", { alpha: false })!;
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    // @ts-expect-error - canvas is required by this pdfjs version's typings
     await page.render({ canvas, canvasContext: ctx, viewport }).promise;
     if (grayscale) {
       const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -102,7 +100,7 @@ async function rasterCompress(
     await new Promise((r) => setTimeout(r, 0));
   }
 
-  await doc.destroy();
+  doc.cleanup();
   return out;
 }
 
