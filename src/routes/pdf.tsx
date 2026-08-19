@@ -246,7 +246,7 @@ function PdfCompressor() {
         {busy ? <Loader2 className="h-10 w-10 mx-auto mb-3 animate-spin" /> : <Upload className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />}
         <p className="font-medium">Drop PDF files or click to select</p>
         <p className="text-xs text-muted-foreground mt-1">Files never leave your device</p>
-        <input id="pdfin" type="file" accept="application/pdf" multiple hidden onChange={(e) => { onFiles(e.target.files); e.currentTarget.value = ""; }} />
+        <input id="pdfin" type="file" accept="application/pdf" multiple hidden onChange={(e) => { const el = e.currentTarget; const fl = el.files; void onFiles(fl).finally(() => { el.value = ""; }); }} />
       </Card>
 
       {status && (
