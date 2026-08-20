@@ -240,7 +240,7 @@ function ImageStudio() {
             <Upload className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
             <p className="font-medium">Drop images here or click to upload</p>
             <p className="text-xs text-muted-foreground mt-1">PNG, JPEG, WebP, AVIF · Max 50MB per file · Sequential processing</p>
-            <input id="imgin" type="file" accept="image/*" multiple hidden onChange={(e) => onFiles(e.target.files)} />
+            <input id="imgin" type="file" accept="image/*" multiple hidden onChange={(e) => { const el = e.currentTarget; onFiles(el.files); el.value = ""; }} />
           </Card>
 
           {items.length > 0 && (
