@@ -38,12 +38,12 @@ const LEVELS: Record<Exclude<Level, "lossless">, { scale: number; quality: numbe
   extreme: { scale: 0.8, quality: 0.35, label: "Extreme" },
 };
 
-let pdfjsPromise: Promise<typeof import("pdfjs-dist")> | null = null;
+let pdfjsPromise: Promise<any> | null = null;
 async function getPdfjs() {
   if (!pdfjsPromise) {
     pdfjsPromise = (async () => {
-      const lib = await import("pdfjs-dist");
-      const workerUrl = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default as string;
+      const lib = await import("pdfjs-dist/legacy/build/pdf.mjs");
+      const workerUrl = (await import("pdfjs-dist/legacy/build/pdf.worker.min.mjs?url")).default as string;
       lib.GlobalWorkerOptions.workerSrc = workerUrl;
       return lib;
     })();
@@ -81,7 +81,7 @@ async function rasterCompress(
     const ctx = canvas.getContext("2d", { alpha: false })!;
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    await page.render({ canvas, canvasContext: ctx, viewport }).promise;
+    await page.render({ canvasContext: ctx, viewport }).promise;
     if (grayscale) {
       const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const d = img.data;
